@@ -1,106 +1,113 @@
-import React from 'react';
-import { X, Printer, Calendar, Clock, User, HeartPulse, FileText } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Printer, Calendar, Clock, User, MapPin } from 'lucide-react';
+import HayatLogo from './HayatLogo';
 
 const AppointmentTicket = ({ ticket, onClose }) => {
   if (!ticket) return null;
 
-  // Format date and time safely
-  const dateObj = new Date(ticket.appointmentDate);
-  const formattedDate = dateObj.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const handlePrint = () => {
+    window.print();
+  };
 
-  const timeHours = dateObj.getHours();
-  const timeString = `${(timeHours % 12) || 12}:${dateObj.getMinutes().toString().padStart(2, '0')} ${timeHours >= 12 ? 'م' : 'ص'}`;
+  const appointmentDate = ticket.appointmentDate ? new Date(ticket.appointmentDate) : null;
+  const dateStr = appointmentDate?.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  const timeStr = appointmentDate?.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
-  const formattedCreatedAt = new Date(ticket.createdAt).toLocaleString('ar-EG');
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 animate-fadeIn" dir="rtl">
+      <div className="absolute inset-0 bg-[var(--surface-overlay)] backdrop-blur-sm" onClick={onClose} />
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}></div>
-
-      {/* Ticket Container */}
-      <div className="relative z-[130] w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden" dir="rtl">
-        {/* Ticket Header */}
-        <div className="bg-blue-600 text-white p-5 flex justify-between items-center relative overflow-hidden">
-          <div className="absolute opacity-10 -right-4 -top-4">
-            <HeartPulse size={100} />
+      <div className="relative z-[130] w-full max-w-sm animate-scaleIn">
+        {/* Ticket */}
+        <div className="bg-white rounded-xl shadow-[var(--shadow-modal)] overflow-hidden print:shadow-none" id="print-ticket">
+          {/* Header */}
+          <div className="bg-[var(--brand)] px-6 py-5 text-center">
+            <HayatLogo variant="light" size="sm" />
+            <p className="text-blue-200/30 text-[10px] tracking-wider mt-1">HOSPITAL INFORMATION SYSTEM</p>
           </div>
-          <div>
-            <h3 className="text-xl font-bold mb-1">تذكرة موعد</h3>
-            <p className="text-blue-100 text-xs">رقم الحجز: {ticket.appointmentId}</p>
+
+          {/* Dashed separator */}
+          <div className="relative">
+            <div className="absolute -right-3 -top-3 w-6 h-6 bg-[var(--surface)] rounded-full" />
+            <div className="absolute -left-3 -top-3 w-6 h-6 bg-[var(--surface)] rounded-full" />
+            <div className="border-t-2 border-dashed border-[var(--border)] mx-6" />
           </div>
-          <button onClick={onClose} className="hover:bg-blue-700 p-2 rounded-full transition relative z-10">
-            <X size={20} />
-          </button>
-        </div>
 
-        {/* Ticket Body */}
-        <div className="p-6 space-y-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative">
-            {/* Cutout effect holes */}
-            <div className="absolute -left-2 top-1/2 -mt-2 w-4 h-4 bg-gray-50 rounded-full border-r border-gray-100"></div>
-            <div className="absolute -right-2 top-1/2 -mt-2 w-4 h-4 bg-gray-50 rounded-full border-l border-gray-100"></div>
-
-            <div className="flex items-start gap-3 border-b border-dashed border-gray-200 pb-3 mb-3">
-              <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-                <User size={20} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">اسم المريض</p>
-                <p className="font-bold text-gray-900">{ticket.patientName}</p>
-                <p className="text-xs text-gray-500 font-mono mt-0.5">{ticket.patientId?.split('-')[0]}</p>
-              </div>
+          {/* Ticket Body */}
+          <div className="p-6 space-y-4">
+            <div className="text-center mb-4">
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">تذكرة موعد</h3>
+              <p className="text-[11px] text-[var(--text-tertiary)]">Appointment Ticket</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-start gap-2">
-                <Calendar size={16} className="text-gray-400 mt-0.5" />
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <User size={14} className="text-[var(--brand)] mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] text-gray-400">التاريخ</p>
-                  <p className="font-semibold text-gray-800 text-sm">{formattedDate.split('،')[1] || formattedDate}</p>
+                  <p className="text-[11px] text-[var(--text-tertiary)]">المريض</p>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">{ticket.patientName || 'غير محدد'}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2">
-                <Clock size={16} className="text-gray-400 mt-0.5" />
+
+              <div className="flex items-start gap-3">
+                <MapPin size={14} className="text-[var(--brand)] mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] text-gray-400">الوقت</p>
-                  <p className="font-semibold text-gray-800 text-sm" dir="ltr">{timeString}</p>
+                  <p className="text-[11px] text-[var(--text-tertiary)]">العيادة / الطبيب</p>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">{ticket.clinicName || 'غير محدد'}</p>
+                  {ticket.doctorName && <p className="text-xs text-[var(--text-secondary)]">{ticket.doctorName}</p>}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Calendar size={14} className="text-[var(--brand)] mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-[11px] text-[var(--text-tertiary)]">التاريخ</p>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">{dateStr || 'غير محدد'}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Clock size={14} className="text-[var(--brand)] mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-[11px] text-[var(--text-tertiary)]">الوقت</p>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">{timeStr || 'غير محدد'}</p>
                 </div>
               </div>
             </div>
+
+            {ticket.appointmentId && (
+              <div className="bg-[var(--surface)] border border-[var(--border-light)] rounded-lg p-2 text-center">
+                <p className="text-[10px] text-[var(--text-tertiary)] mb-0.5">رقم الموعد</p>
+                <p className="text-xs font-mono font-bold text-[var(--brand)]">{ticket.appointmentId.split('-')[0]?.toUpperCase()}</p>
+              </div>
+            )}
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="bg-green-50 p-2 rounded-lg text-green-600">
-                <FileText size={20} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">العيادة</p>
-                <p className="font-bold text-gray-900">{ticket.clinicName}</p>
-              </div>
-            </div>
-            <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded-md border border-gray-100 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
-              {ticket.doctorName}
-            </p>
-          </div>
-
-          <div className="flex justify-between items-center text-[10px] text-gray-400 px-2 mt-2">
-            <span>تاريخ الإنشاء: <span dir="ltr">{formattedCreatedAt}</span></span>
-            <span className="bg-blue-50 px-2 py-1 rounded-full text-blue-600 font-medium">{ticket.status}</span>
+          {/* Footer */}
+          <div className="px-6 pb-5 border-t border-[var(--border-light)] pt-4 text-center text-[10px] text-[var(--text-tertiary)]">
+            يرجى الحضور قبل الموعد بـ 15 دقيقة
           </div>
         </div>
 
-        {/* Ticket Footer / Action */}
-        <div className="p-4 border-t-2 border-dashed border-gray-200 bg-gray-50 flex justify-center pb-6">
-          <button className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md w-full justify-center group">
-            <Printer size={18} className="group-hover:scale-110 transition-transform" />
+        {/* Action Buttons (outside ticket for print) */}
+        <div className="flex gap-2 mt-4 print:hidden">
+          <button
+            onClick={handlePrint}
+            className="flex-1 flex items-center justify-center gap-2 bg-white border border-[var(--border)] text-[var(--text-secondary)] py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+          >
+            <Printer size={16} />
             طباعة التذكرة
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 bg-[var(--brand)] text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-[var(--brand-dark)] transition-colors"
+          >
+            إغلاق
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

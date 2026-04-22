@@ -1,203 +1,131 @@
-import React, { useEffect } from 'react';
+import { useState } from 'react';
+import { X, UserPlus } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { X, UserPlus, CheckCircle, CalendarIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useRegisterPatient } from '../Hooks/useReception';
+import Input from './Input';
+import Button from './Button';
 
-const patientSchema = yup.object().shape({
-  fullName: yup.string().required('الاسم بالكامل مطلوب'),
-  nationalId: yup.string().required('رقم الهوية / الإقامة مطلوب'),
-  gender: yup.string().required('يرجى اختيار الجنس'),
+const schema = yup.object().shape({
+  fullName: yup.string().required('الاسم الكامل مطلوب'),
+  nationalId: yup.string().required('رقم الهوية مطلوب').min(10, 'رقم الهوية يجب أن يكون 10 أرقام على الأقل'),
+  gender: yup.string().required('الجنس مطلوب').oneOf(['Male', 'Female'], 'اختر الجنس'),
   dateOfBirth: yup.string().required('تاريخ الميلاد مطلوب'),
   phone: yup.string().required('رقم الهاتف مطلوب'),
   address: yup.string().required('العنوان مطلوب'),
 });
 
 const NewPatientModal = ({ isOpen, onClose }) => {
-  const registerMutation = useRegisterPatient();
+  const createPatientMutation = useRegisterPatient();
 
   const {
     register,
     handleSubmit,
+    formState: { errors },
     reset,
-    formState: { errors, isSubmitting },
   } = useForm({
-    resolver: yupResolver(patientSchema),
+    resolver: yupResolver(schema),
     defaultValues: {
-      gender: 'Male',
-      fullName: '',
-      nationalId: '',
-      dateOfBirth: '',
-      phone: '',
-      address: ''
-    }
+      fullName: '', nationalId: '', gender: '', dateOfBirth: '', phone: '', address: '',
+    },
   });
 
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      reset(); // ensure clean state
-    }
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose, reset]);
-
-  if (!isOpen) return null;
-
   const onSubmit = (data) => {
-    const dateObj = new Date(data.dateOfBirth);
-    const payload = {
-      ...data,
-      dateOfBirth: dateObj.toISOString()
-    };
-
-    registerMutation.mutate(payload, {
-      onSuccess: (res) => {
-        alert(`تم تسجيل المريض بنجاح!\nاسم المريض: ${res.fullName}\nرقم الهاتف: ${res.phone}\nرقم الملف: ${res.patientId}`);
+    createPatientMutation.mutate(data, {
+      onSuccess: () => {
         reset();
         onClose();
       },
-      onError: (err) => {
-        alert(err.customMessage || 'حدث خطأ أثناء تسجيل المريض. الأرجاء المحاولة مجدداً');
-        console.error(err);
-      }
     });
   };
 
+  if (!isOpen) return null;
+
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
-        onClick={onClose}
-      ></div>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
+      <div className="absolute inset-0 bg-[var(--surface-overlay)] backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative z-[110] w-full max-w-3xl mx-auto" dir="rtl">
-        <div className="bg-white rounded-xl shadow-[0_12px_32px_rgba(42,52,55,0.06)] border border-gray-200 overflow-hidden">
+      <div className="relative z-[110] w-full max-w-lg bg-white rounded-xl shadow-[var(--shadow-modal)] overflow-hidden animate-scaleIn" dir="rtl">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[var(--border)] flex justify-between items-center">
+          <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <UserPlus className="text-[var(--brand)] w-5 h-5" />
+            تسجيل مريض جديد
+          </h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
+            <X size={18} />
+          </button>
+        </div>
 
-          {/* Header */}
-          <div className="bg-white px-8 py-6 border-b border-gray-200 flex justify-between items-center relative">
-            <div className="absolute right-0 top-0 w-32 h-full bg-blue-50/50 rounded-l-full -mr-16"></div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3 relative z-10">
-                <UserPlus className="text-blue-600 w-8 h-8" />
-                تسجيل مريض جديد
-              </h2>
-              <p className="text-gray-500 text-sm mt-1 mr-10 relative z-10">قم بإدخال بيانات المريض للتسجيل في النظام.</p>
+        {/* Body */}
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <Input
+                label="الاسم الكامل"
+                placeholder="مثال: أحمد محمد العلي"
+                {...register('fullName')}
+                error={errors.fullName?.message}
+              />
             </div>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-900 transition-colors p-2 rounded-full hover:bg-gray-100 z-10 relative">
-              <X className="w-5 h-5" />
-            </button>
+
+            <Input
+              label="رقم الهوية"
+              placeholder="رقم الهوية الوطنية"
+              {...register('nationalId')}
+              error={errors.nationalId?.message}
+            />
+
+            <Input
+              label="رقم الهاتف"
+              placeholder="07XXXXXXXX"
+              {...register('phone')}
+              error={errors.phone?.message}
+            />
+
+            <div className="w-full">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">الجنس</label>
+              <select {...register('gender')} className={`input-base appearance-none cursor-pointer ${errors.gender ? 'input-error' : ''}`}>
+                <option value="" disabled>اختر الجنس</option>
+                <option value="Male">ذكر</option>
+                <option value="Female">أنثى</option>
+              </select>
+              {errors.gender && <p className="mt-1.5 text-xs text-[var(--status-error-text)]">{errors.gender.message}</p>}
+            </div>
+
+            <Input
+              label="تاريخ الميلاد"
+              type="date"
+              {...register('dateOfBirth')}
+              error={errors.dateOfBirth?.message}
+            />
+
+            <div className="md:col-span-2">
+              <Input
+                label="العنوان"
+                placeholder="المدينة أو العنوان"
+                {...register('address')}
+                error={errors.address?.message}
+              />
+            </div>
           </div>
 
-          {/* Form Body */}
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-
-              {/* Full Name */}
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500 font-semibold px-1 block">الاسم بالكامل</label>
-                <input
-                  type="text"
-                  {...register('fullName')}
-                  className={`w-full bg-gray-50 border ${errors.fullName ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-600 focus:ring-blue-600'} rounded-lg py-3 px-4 text-gray-900 text-sm transition-colors outline-none`}
-                  placeholder="الاسم الرباعي"
-                />
-                {errors.fullName && <p className="text-red-500 text-xs px-1">{errors.fullName.message}</p>}
-              </div>
-
-              {/* National ID */}
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500 font-semibold px-1 block">رقم الهوية / الإقامة</label>
-                <input
-                  type="text"
-                  {...register('nationalId')}
-                  className={`w-full bg-gray-50 border ${errors.nationalId ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-600 focus:ring-blue-600'} rounded-lg py-3 px-4 text-gray-900 text-sm transition-colors outline-none`}
-                  placeholder="أدخل 14 رقماً"
-                />
-                {errors.nationalId && <p className="text-red-500 text-xs px-1">{errors.nationalId.message}</p>}
-              </div>
-
-              {/* Phone */}
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500 font-semibold px-1 block">رقم الهاتف</label>
-                <input
-                  type="text"
-                  {...register('phone')}
-                  className={`w-full bg-gray-50 border ${errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-600 focus:ring-blue-600'} rounded-lg py-3 px-4 text-gray-900 text-sm transition-colors outline-none`}
-                  placeholder="01xxxxxxxxx"
-                  dir="ltr"
-                />
-                {errors.phone && <p className="text-red-500 text-xs px-1 text-right">{errors.phone.message}</p>}
-              </div>
-
-              {/* Date of Birth */}
-              <div className="space-y-2 relative">
-                <label className="text-xs text-gray-500 font-semibold px-1 block">تاريخ الميلاد</label>
-                <input
-                  type="date"
-                  {...register('dateOfBirth')}
-                  onClick={(e) => {
-                    try { e.target.showPicker(); } catch (err) { }
-                  }}
-                  className={`w-full bg-gray-50 border ${errors.dateOfBirth ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-600 focus:ring-blue-600'} rounded-lg py-3 px-4 text-gray-900 text-sm transition-colors outline-none cursor-pointer`}
-                />
-                {errors.dateOfBirth && <p className="text-red-500 text-xs px-1">{errors.dateOfBirth.message}</p>}
-              </div>
-
-              {/* Gender */}
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500 font-semibold px-1 block">الجنس</label>
-                <select
-                  {...register('gender')}
-                  className={`w-full bg-gray-50 border ${errors.gender ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-600 focus:ring-blue-600'} rounded-lg py-3 px-4 text-gray-900 text-sm transition-colors outline-none cursor-pointer`}
-                >
-                  <option value="Male">ذكر</option>
-                  <option value="Female">أنثى</option>
-                </select>
-                {errors.gender && <p className="text-red-500 text-xs px-1">{errors.gender.message}</p>}
-              </div>
-
-              {/* Address */}
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-xs text-gray-500 font-semibold px-1 block">العنوان</label>
-                <input
-                  type="text"
-                  {...register('address')}
-                  className={`w-full bg-gray-50 border ${errors.address ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-600 focus:ring-blue-600'} rounded-lg py-3 px-4 text-gray-900 text-sm transition-colors outline-none`}
-                  placeholder="المحافظة، المدينة، الشارع"
-                />
-                {errors.address && <p className="text-red-500 text-xs px-1">{errors.address.message}</p>}
-              </div>
+          {createPatientMutation.isError && (
+            <div className="bg-[var(--status-error-bg)] border border-[var(--status-error-border)] text-[var(--status-error-text)] p-3 rounded-lg text-sm text-center animate-fadeIn">
+              حدث خطأ أثناء تسجيل المريض. يرجى المحاولة مرة أخرى.
             </div>
+          )}
 
-            {/* Footer */}
-            <div className="bg-gray-50 px-8 py-5 flex justify-end gap-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2 rounded-md font-bold text-sm text-gray-900 hover:bg-gray-100 transition-colors"
-                disabled={isSubmitting || registerMutation.isPending}
-              >
-                إلغاء
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || registerMutation.isPending}
-                className="bg-blue-600 text-white px-8 py-2 rounded-md font-bold text-sm shadow-md hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {registerMutation.isPending ? 'جاري التسجيل...' : 'حفظ بيانات المريض'}
-                {!registerMutation.isPending && <CheckCircle className="w-4 h-4" />}
-              </button>
-            </div>
-          </form>
-
-        </div>
+          {/* Footer */}
+          <div className="flex justify-between items-center pt-3 border-t border-[var(--border-light)]">
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>إلغاء</Button>
+            <Button type="submit" size="sm" disabled={createPatientMutation.isPending}>
+              {createPatientMutation.isPending ? 'جاري التسجيل...' : 'تسجيل المريض'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>,
     document.body

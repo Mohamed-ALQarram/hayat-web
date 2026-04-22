@@ -1,97 +1,143 @@
 import React from 'react';
 import { usePatientMedicalHistory } from '../../Hooks/useDoctor';
-import { Calendar, FileText, ClipboardList } from 'lucide-react';
+import { Calendar, User, Pill, Clock, FileText, Stethoscope, MessageSquare } from 'lucide-react';
 
 const HistoryTimeline = ({ patientId }) => {
   const { data: history, isLoading, isError } = usePatientMedicalHistory(patientId);
+  const visits = history || [];
 
   if (isLoading) {
-    return <div className="text-center py-10 text-gray-500">جاري تحميل التاريخ الطبي...</div>;
+    return (
+      <div className="flex items-center justify-center py-12 text-[var(--text-tertiary)]">
+        <div className="w-5 h-5 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin ml-3" />
+        <span className="text-sm">جاري تحميل التاريخ الطبي...</span>
+      </div>
+    );
   }
 
   if (isError) {
-    return <div className="text-center py-10 text-red-500">حدث خطأ أثناء تحميل السجل الطبي.</div>;
+    return (
+      <div className="text-center py-12 text-[var(--status-error-text)] text-sm">
+        حدث خطأ أثناء تحميل التاريخ الطبي.
+      </div>
+    );
   }
 
-  if (!history || history.length === 0) {
+  if (visits.length === 0) {
     return (
-      <div className="bg-white border border-gray-200 rounded-xl p-10 text-center flex flex-col items-center shadow-sm">
-        <FileText className="w-12 h-12 text-gray-300 mb-4" />
-        <h3 className="text-lg font-bold text-gray-800 mb-2">لا يوجد تاريخ طبي</h3>
-        <p className="text-gray-500 text-sm">لم يتم تسجيل أي زيارات سابقة لهذا المريض في النظام.</p>
+      <div className="card p-8 text-center animate-fadeIn">
+        <FileText className="w-10 h-10 mx-auto mb-3 text-[var(--text-tertiary)] opacity-30" />
+        <h3 className="font-bold text-[var(--text-secondary)] text-sm">لا يوجد تاريخ طبي</h3>
+        <p className="text-xs text-[var(--text-tertiary)] mt-1">لم يتم تسجيل أي زيارات سابقة لهذا المريض.</p>
       </div>
     );
   }
 
   return (
-    <div className="relative border-r-2 border-blue-100 pr-6 ml-4 space-y-8 pb-10">
-      {history.map((visit, idx) => (
-        <div key={visit.visitId || idx} className="relative">
-          {/* Timeline Node */}
-          <div className="absolute -right-[31px] top-2 w-4 h-4 bg-white border-4 border-blue-500 rounded-full shadow-sm"></div>
+    <div className="relative animate-fadeIn">
+      {/* Vertical timeline line */}
+      <div className="absolute top-0 bottom-0 right-[15px] w-[2px] bg-[var(--border-light)]" />
 
-          <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-            {/* Header info */}
-            <div className="flex justify-between items-start mb-4 border-b border-gray-50 pb-4">
-              <div className="flex gap-2 items-center text-sm font-bold text-gray-900">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                {(() => {
-                  const dateVal = visit.visitDate || visit.createdAt || visit.date;
-                  const d = new Date(dateVal);
-                  return isNaN(d.getTime())
-                    ? 'تاريخ غير معروف'
-                    : d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
-                })()}
+      <div className="space-y-4">
+        {visits.map((visit, index) => {
+          const visitDate = visit.createdAt ? new Date(visit.createdAt) : null;
+          const dateStr = visitDate ? visitDate.toLocaleDateString('ar-EG', {
+            year: 'numeric', month: 'long', day: 'numeric'
+          }) : '';
+          const timeStr = visitDate ? visitDate.toLocaleTimeString('ar-EG', {
+            hour: '2-digit', minute: '2-digit'
+          }) : '';
+
+          return (
+            <div key={visit.id || index} className="relative pr-10 animate-slideUp" style={{ animationDelay: `${index * 60}ms` }}>
+              {/* Timeline dot */}
+              <div className="absolute right-[10px] top-4 z-10">
+                <div className={`w-3 h-3 rounded-full border-2 border-white shadow-sm
+                  ${index === 0 ? 'bg-[var(--brand)]' : 'bg-[var(--text-tertiary)]'}`}
+                />
               </div>
-              <div className="text-sm font-medium text-gray-500">
-                <span className="text-xs text-gray-400 block mb-1">اسم الطبيب</span>
-                د. {visit.doctorName}
+
+              <div className={`card p-4 hover:shadow-[var(--shadow-md)] transition-shadow duration-200
+                ${index === 0 ? 'border-[var(--brand)]/20' : ''}`}>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-[var(--border-light)]">
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs">
+                    <Calendar size={13} className="text-[var(--text-tertiary)]" />
+                    <span className="font-medium">{dateStr}</span>
+                    <span className="text-[var(--text-tertiary)]">|</span>
+                    <Clock size={12} className="text-[var(--text-tertiary)]" />
+                    <span>{timeStr}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
+                    <User size={12} />
+                    <span>{visit.doctorName || 'غير محدد'}</span>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="space-y-2.5">
+                  {visit.patientComplaint && (
+                    <div className="flex gap-2">
+                      <MessageSquare size={14} className="text-[var(--brand)] mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-0.5">الشكوى</p>
+                        <p className="text-sm text-[var(--text-primary)]">{visit.patientComplaint}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {visit.diagnosis && (
+                    <div className="flex gap-2">
+                      <Stethoscope size={14} className="text-[var(--brand)] mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-0.5">التشخيص</p>
+                        <p className="text-sm text-[var(--text-primary)]">{visit.diagnosis}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {visit.notes && (
+                    <div className="flex gap-2">
+                      <FileText size={14} className="text-[var(--text-tertiary)] mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-0.5">ملاحظات</p>
+                        <p className="text-sm text-[var(--text-secondary)]">{visit.notes}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {visit.prescriptions && visit.prescriptions.length > 0 && (
+                    <div className="flex gap-2">
+                      <Pill size={14} className="text-[var(--brand)] mt-0.5 shrink-0" />
+                      <div className="w-full">
+                        <p className="text-[11px] font-semibold text-[var(--text-tertiary)] mb-1.5">الأدوية</p>
+                        <div className="bg-[var(--surface)] rounded-lg p-2.5 border border-[var(--border-light)]">
+                          {visit.prescriptions.map((pres, pIndex) => (
+                            <div key={pIndex} className={`flex items-center gap-3 py-1.5 text-sm ${pIndex > 0 ? 'border-t border-[var(--border-light)]' : ''}`}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shrink-0" />
+                              <span className="font-medium text-[var(--text-primary)]">{pres.drugName}</span>
+                              <span className="text-[var(--text-tertiary)]">·</span>
+                              <span className="text-[var(--text-secondary)] text-xs">{pres.dosage}</span>
+                              <span className="text-[var(--text-tertiary)]">·</span>
+                              <span className="text-[var(--text-secondary)] text-xs">{pres.frequency}</span>
+                              {pres.duration && (
+                                <>
+                                  <span className="text-[var(--text-tertiary)]">·</span>
+                                  <span className="text-[var(--text-secondary)] text-xs">{pres.duration}</span>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-
-            {/* Content Blocks */}
-            <div className="space-y-4">
-
-              {visit.patientComplaint && (
-                <div>
-                  <h4 className="text-xs font-bold text-blue-600 mb-1">الشكوى</h4>
-                  <p className="text-sm text-gray-800 leading-relaxed">{visit.patientComplaint}</p>
-                </div>
-              )}
-
-              {visit.diagnosis && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-xs font-bold text-blue-600 mb-1">التشخيص</h4>
-                  <p className="text-sm font-bold text-gray-900 leading-relaxed">{visit.diagnosis}</p>
-                </div>
-              )}
-
-              {visit.notes && (
-                <div>
-                  <h4 className="text-xs font-bold text-blue-600 mb-1">ملاحظات الطبيب</h4>
-                  <p className="text-sm text-gray-700 leading-relaxed">{visit.notes}</p>
-                </div>
-              )}
-
-              {visit.prescriptions && visit.prescriptions.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
-                  <h4 className="text-xs font-bold text-blue-600 mb-3 flex items-center gap-1">
-                    <ClipboardList className="w-4 h-4" /> الأدوية الموصوفة
-                  </h4>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {visit.prescriptions.map((p, pIdx) => (
-                      <li key={pIdx} className="text-sm flex gap-2 p-2 bg-blue-50/50 rounded border border-blue-50">
-                        <span className="font-bold text-blue-900">{p.drugName}</span>
-                        <span className="text-gray-500 text-xs mt-0.5">({p.dosage} - {p.frequency})</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
+          );
+        })}
+      </div>
     </div>
   );
 };

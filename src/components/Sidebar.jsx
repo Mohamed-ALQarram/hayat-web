@@ -4,7 +4,8 @@ import { Calendar, Users, FileText, Banknote, Activity, HelpCircle, LogOut, User
 import { useAuthStore } from '../store/authStore';
 import AppointmentModal from './AppointmentModal';
 import NewPatientModal from './NewPatientModal';
-import Button from './Button';
+import HayatLogo from './HayatLogo';
+
 const Sidebar = () => {
   const logout = useAuthStore((state) => state.logout);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,67 +23,64 @@ const Sidebar = () => {
 
   return (
     <>
-      <div className="w-64 bg-white border-l h-screen flex flex-col fixed right-0 top-0">
-        <div className="p-6 border-b flex flex-col items-center">
-          <p className="text-sm font-semibold text-gray-800">مكتب الاستقبال</p>
-          <p className="text-xs text-gray-500 text-center">الجناح الرئيسي - الطابق الأول</p>
+      <div className="w-60 bg-[var(--brand)] h-screen flex flex-col fixed right-0 top-0 z-30">
+        {/* Brand */}
+        <div className="px-5 pt-6 pb-5 flex flex-col items-center border-b border-white/10">
+          <HayatLogo variant="light" size="md" />
+          <p className="text-[10px] text-blue-200/40 tracking-wide mt-2">نظام إدارة المستشفى</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4">
-          <div className="px-4 mb-4">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="w-full bg-[#0052b4] hover:bg-[#004294] text-white rounded-lg py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors"
-            >
-              <Calendar size={18} />
-              موعد جديد
-            </button>
-          </div>
-          {/* Right side of Topbar (Search & New Patient) */}
-          <div className="px-4 mb-4">
-            <Button 
-              variant="primary" 
-              onClick={() => setIsPatientModalOpen(true)}
-              className="w-full bg-[#0052b4] hover:bg-[#004294] text-white rounded-lg py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors" 
-              style={{ margin: 0 }}
-            >
-              <UserPlus size={18} />
-              <span>تسجيل مريض جديد</span>
-            </Button>
-          </div>
-
-
-          <nav className="space-y-1 px-3">
-            {navItems.map((item, index) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={index}
-                  to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${isActive
-                    ? 'text-blue-700 bg-blue-50 font-medium border-r-4 border-blue-600'
-                    : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                >
-                  <Icon size={18} />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+        {/* Quick Actions */}
+        <div className="px-3 pt-4 space-y-2">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="w-full bg-white/10 hover:bg-white/15 text-white rounded-lg py-2.5 flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 border border-white/10"
+          >
+            <Calendar size={16} />
+            موعد جديد
+          </button>
+          <button
+            onClick={() => setIsPatientModalOpen(true)}
+            className="w-full bg-white/[0.06] hover:bg-white/10 text-blue-100/80 rounded-lg py-2.5 flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 border border-white/[0.06]"
+          >
+            <UserPlus size={16} />
+            تسجيل مريض جديد
+          </button>
         </div>
 
-        <div className="p-4 border-t space-y-1">
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg text-sm transition-colors">
-            <HelpCircle size={18} />
-            الدعم
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
+          {navItems.map((item, index) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={index}
+                to={item.path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
+                  ${isActive
+                    ? 'text-white bg-white/15 font-semibold'
+                    : 'text-blue-100/60 hover:text-white hover:bg-white/[0.06]'
+                  }`}
+              >
+                <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="px-3 pb-4 pt-2 border-t border-white/10 space-y-0.5">
+          <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-blue-100/50 hover:text-white hover:bg-white/[0.06] rounded-lg text-sm transition-all duration-200">
+            <HelpCircle size={18} strokeWidth={1.8} />
+            الدعم الفني
           </a>
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg text-sm transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-blue-100/50 hover:text-red-300 hover:bg-red-500/10 rounded-lg text-sm transition-all duration-200"
           >
-            <LogOut size={18} />
+            <LogOut size={18} strokeWidth={1.8} />
             تسجيل الخروج
           </button>
         </div>
@@ -93,7 +91,7 @@ const Sidebar = () => {
         onClose={() => setIsModalOpen(false)}
       />
 
-      <NewPatientModal 
+      <NewPatientModal
         isOpen={isPatientModalOpen}
         onClose={() => setIsPatientModalOpen(false)}
       />

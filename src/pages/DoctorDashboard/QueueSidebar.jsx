@@ -1,106 +1,108 @@
 import React from 'react';
-import { useUpdateAppointmentStatus } from '../../Hooks/useDoctor';
 import { useDoctorVisitStore } from '../../store/doctorVisitStore';
-import { Megaphone, Check, X } from 'lucide-react';
+import { useUpdateAppointmentStatus } from '../../Hooks/useDoctor';
+import { Phone, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 const QueueSidebar = ({ queue }) => {
-  const updateStatusMutation = useUpdateAppointmentStatus();
-  const { activeAppointmentId, setActiveAppointment } = useDoctorVisitStore();
+  const { activeAppointmentId, setActiveAppointment, clearDraft } = useDoctorVisitStore();
+  const updateStatus = useUpdateAppointmentStatus();
 
-  const handleUpdateStatus = (appointmentId, status) => {
-    updateStatusMutation.mutate({
-      appointmentId,
-      payload: { status, reason: '' }
-    }, {
-      onSuccess: () => {
-        if (status === 'Cancelled') {
-          // If cancelled, explicitly clear it from draft and state
-          useDoctorVisitStore.getState().clearDraft(appointmentId);
-          useDoctorVisitStore.getState().setActiveAppointment(null);
-        }
-      }
-    });
+  const handleAttend = (appointmentId) => {
+    updateStatus.mutate({ appointmentId, payload: { status: 'InProgress' } });
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'InProgress':
-        return <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">قيد الفحص</span>;
-      case 'Waiting':
-        return <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">في الانتظار</span>;
-      case 'Scheduled':
-        return <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[10px] font-bold">مجدول</span>;
-      default:
-        return null;
-    }
+  const handleAbsent = (appointmentId) => {
+    updateStatus.mutate(
+      { appointmentId, payload: { status: 'Cancelled' } },
+      { onSuccess: () => { clearDraft(appointmentId); } }
+    );
   };
+
+  const statusConfig = {
+    'Waiting': { badge: 'badge-waiting', label: 'في الانتظار', icon: Clock },
+    'Scheduled': { badge: 'badge-scheduled', label: 'مجدول', icon: Clock },
+    'InProgress': { badge: 'badge-active', label: 'جاري الكشف', icon: CheckCircle },
+    'Completed': { badge: 'badge-done', label: 'مكتمل', icon: CheckCircle },
+    'Cancelled': { badge: 'badge-error', label: 'ملغي', icon: XCircle },
+  };
+
+  if (queue.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-[var(--text-tertiary)]">
+        <Clock className="w-8 h-8 mb-2 opacity-30" />
+        <p className="text-sm font-medium text-[var(--text-secondary)]">لا يوجد مرضى</p>
+        <p className="text-xs mt-0.5">قائمة الانتظار فارغة حالياً</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-3">
-      {queue.map((item, index) => {
-        const isActive = activeAppointmentId === item.appointmentId;
-        const isWaiting = item.status === 'Waiting' || item.status === 'Scheduled';
+    <div className="space-y-2">
+      {queue.map((patient) => {
+        const isActive = patient.appointmentId === activeAppointmentId;
+        const config = statusConfig[patient.status] || statusConfig.Scheduled;
+        const appointmentTime = patient.appointmentDate
+          ? new Date(patient.appointmentDate).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+          : null;
 
         return (
-          <div 
-            key={item.appointmentId}
-            onClick={() => setActiveAppointment(item.appointmentId)}
-            className={`bg-white rounded-lg p-3 border transition-all cursor-pointer shadow-sm relative ${isActive ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300'}`}
-          >
-            {/* Active Border Hint */}
-            {isActive && <div className="absolute top-0 right-0 w-1.5 h-full bg-blue-600 rounded-r-lg"></div>}
-
-            <div className="flex justify-between items-start pl-2">
-              <div className="flex-1 pr-2">
-                <h4 className="font-bold text-gray-900 text-sm">{item.patientName}</h4>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-gray-500 font-mono">
-                    {new Date(item.appointmentDate).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {getStatusBadge(item.status)}
+          <div key={patient.appointmentId}>
+            <button
+              onClick={() => setActiveAppointment(patient.appointmentId)}
+              className={`w-full text-right p-3 rounded-xl transition-all duration-200 border
+                ${isActive
+                  ? 'bg-[var(--brand-50)] border-[var(--brand)] shadow-sm'
+                  : 'border-transparent hover:bg-gray-50 hover:border-[var(--border)]'
+                }`}
+            >
+              <div className="flex justify-between items-start mb-1.5">
+                <div className="flex-1">
+                  <p className={`text-sm font-semibold ${isActive ? 'text-[var(--brand)]' : 'text-[var(--text-primary)]'}`}>
+                    {patient.patientName}
+                  </p>
                 </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${config.badge}`}>
+                  {config.label}
+                </span>
               </div>
-              <div className="bg-gray-100 text-gray-600 font-bold w-8 h-8 flex items-center justify-center rounded-lg text-sm shrink-0">
-                #{index + 1}
+              <div className="flex items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
+                {appointmentTime && <span>{appointmentTime}</span>}
+                <span>·</span>
+                <span className="font-mono">{patient.patientId.split('-')[0]}</span>
               </div>
-            </div>
+            </button>
 
-            {/* Actions (Only show if active and waiting) */}
-            {isActive && isWaiting && (
-              <div className="mt-4 space-y-2 px-1">
-                <button className="w-full bg-[#0052b4] hover:bg-blue-800 text-white py-2 rounded flex items-center justify-center gap-2 text-xs font-bold transition-colors">
-                  <Megaphone size={14} />
-                  استدعاء المريض
+            {/* Action Buttons - only for active */}
+            {isActive && (patient.status === 'Waiting' || patient.status === 'Scheduled') && (
+              <div className="flex items-center gap-2 mt-1.5 mr-3 animate-slideUp">
+                <button
+                  onClick={() => {}}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-[var(--text-tertiary)] hover:bg-gray-100 transition-colors"
+                >
+                  <Phone size={12} />
+                  استدعاء
                 </button>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleUpdateStatus(item.appointmentId, 'InProgress'); }}
-                    disabled={updateStatusMutation.isPending}
-                    className="flex-1 bg-green-100/70 hover:bg-green-200 text-green-700 py-1.5 rounded flex items-center justify-center gap-1 text-xs font-bold transition-colors border border-green-200 disabled:opacity-50"
-                  >
-                    <Check size={14} />
-                    حضر
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleUpdateStatus(item.appointmentId, 'Cancelled'); }}
-                    disabled={updateStatusMutation.isPending}
-                    className="flex-1 bg-red-100/70 hover:bg-red-200 text-red-600 py-1.5 rounded flex items-center justify-center gap-1 text-xs font-bold transition-colors border border-red-200 disabled:opacity-50"
-                  >
-                    <X size={14} />
-                    تغيب
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleAttend(patient.appointmentId)}
+                  disabled={updateStatus.isPending}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-[var(--status-active-text)] bg-[var(--status-active-bg)] hover:bg-green-100 transition-colors border border-[var(--status-active-border)]"
+                >
+                  <CheckCircle size={12} />
+                  حضر
+                </button>
+                <button
+                  onClick={() => handleAbsent(patient.appointmentId)}
+                  disabled={updateStatus.isPending}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-[var(--status-error-text)] bg-[var(--status-error-bg)] hover:bg-red-100 transition-colors border border-[var(--status-error-border)]"
+                >
+                  <XCircle size={12} />
+                  تغيب
+                </button>
               </div>
             )}
           </div>
         );
       })}
-      
-      {queue.length === 0 && (
-        <div className="text-center text-sm text-gray-400 py-4">
-          لا يوجد مواعيد في الانتظار
-        </div>
-      )}
     </div>
   );
 };

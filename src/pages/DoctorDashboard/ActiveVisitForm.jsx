@@ -1,236 +1,210 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useDoctorVisitStore } from '../../store/doctorVisitStore';
-import { useSubmitMedicalHistory, useUpdateAppointmentStatus, useDoctorQueue } from '../../Hooks/useDoctor';
-import { Users, FileText, ClipboardList, PenTool, CheckCircle, ArrowRight, Plus, Trash2 } from 'lucide-react';
+import { useSubmitMedicalHistory, useUpdateAppointmentStatus } from '../../Hooks/useDoctor';
+import { Plus, Trash2, Send, FileText, Pill, Save, Stethoscope, MessageSquare } from 'lucide-react';
+import Button from '../../components/Button';
 
 const ActiveVisitForm = ({ activePatient }) => {
-  const { drafts, updateDraft, addPrescription, removePrescription, clearDraft, setActiveAppointment } = useDoctorVisitStore();
-  const submitMedicalHistory = useSubmitMedicalHistory();
-  const updateStatusMutation = useUpdateAppointmentStatus();
-  const { data: queueData } = useDoctorQueue();
+  const { drafts, activeAppointmentId, updateDraft, addPrescription, removePrescription, clearDraft, setActiveAppointment } = useDoctorVisitStore();
+  const submitHistory = useSubmitMedicalHistory();
+  const updateStatus = useUpdateAppointmentStatus();
 
-  const appointmentId = activePatient.appointmentId;
-  const patientId = activePatient.patientId;
-  
-  // Get active draft or fallback to empty structure
-  const draft = drafts[appointmentId] || { patientComplaint: '', diagnosis: '', notes: '', prescriptions: [] };
+  const currentDraft = drafts[activeAppointmentId] || { patientComplaint: '', diagnosis: '', notes: '', prescriptions: [] };
 
-  const [prescriptionForm, setPrescriptionForm] = useState({ drugName: '', dosage: '', frequency: '', duration: '', instructions: '' });
-
-  const handleTextChange = (e) => {
-    updateDraft(appointmentId, { [e.target.name]: e.target.value });
+  const handleFieldChange = (field, value) => {
+    updateDraft(activeAppointmentId, { [field]: value });
   };
 
-  const handleAddPrescription = () => {
-    if (!prescriptionForm.drugName) return;
-    addPrescription(appointmentId, prescriptionForm);
-    setPrescriptionForm({ drugName: '', dosage: '', frequency: '', duration: '', instructions: '' });
+  const handleAddDrug = () => {
+    addPrescription(activeAppointmentId, { drugName: '', dosage: '', frequency: '', duration: '' });
   };
 
-  const handleEndVisit = async () => {
-    if (!draft.diagnosis && !draft.patientComplaint) {
-        alert('يرجى إدخال الشكوى أو التشخيص على الأقل');
-        return;
-    }
+  const handlePrescriptionChange = (index, field, value) => {
+    const updated = [...currentDraft.prescriptions];
+    updated[index] = { ...updated[index], [field]: value };
+    updateDraft(activeAppointmentId, { prescriptions: updated });
+  };
 
-    // 1. Submit form data
-    submitMedicalHistory.mutate({
-        patientId,
-        payload: draft
-    }, {
-        onSuccess: () => {
-            // 2. Mark appointment as complete
-            updateStatusMutation.mutate({
-                appointmentId,
-                payload: { status: 'Completed', reason: '' }
-            }, {
-                onSuccess: () => {
-                    // 3. Clear draft
-                    clearDraft(appointmentId);
-                    
-                    // 4. Select next patient
-                    if (queueData) {
-                        const remaining = queueData.filter(p => (p.status === 'InProgress' || p.status === 'Waiting') && p.appointmentId !== appointmentId);
-                        if (remaining.length > 0) {
-                            setActiveAppointment(remaining[0].appointmentId);
-                        } else {
-                            setActiveAppointment(null);
-                        }
-                    }
-                }
-            });
+  const handleFinishVisit = async () => {
+    try {
+      await submitHistory.mutateAsync({
+        patientId: activePatient.patientId,
+        payload: {
+          patientComplaint: currentDraft.patientComplaint,
+          diagnosis: currentDraft.diagnosis,
+          notes: currentDraft.notes,
+          prescriptions: currentDraft.prescriptions.filter(p => p.drugName.trim()),
         }
-    });
+      });
 
+      await updateStatus.mutateAsync({
+        appointmentId: activeAppointmentId,
+        payload: { status: 'Completed' }
+      });
+
+      clearDraft(activeAppointmentId);
+      setActiveAppointment(null);
+    } catch (error) {
+      console.error('Visit submission failed:', error);
+    }
   };
 
-  if (activePatient.status === 'Waiting') {
-      return (
-          <div className="bg-white border border-gray-200 rounded-xl p-10 text-center flex flex-col items-center">
-              <Users className="w-16 h-16 text-gray-300 mb-4" />
-              <h3 className="text-xl font-bold text-gray-800 mb-2">في الانتظار</h3>
-              <p className="text-gray-500 mb-6 max-w-md">يجب تحويل حالة المريض إلى "حضر" من قائمة الانتظار الجانبية لبدء تسجيل البيانات الطبية والزيارة الحالية.</p>
-          </div>
-      );
+  const isSubmitting = submitHistory.isPending || updateStatus.isPending;
+
+  if (activePatient.status === 'Completed') {
+    return (
+      <div className="card p-8 text-center animate-fadeIn">
+        <div className="w-12 h-12 bg-[var(--status-done-bg)] rounded-full flex items-center justify-center mx-auto mb-3">
+          <Stethoscope className="w-6 h-6 text-[var(--status-done-text)]" />
+        </div>
+        <h3 className="font-bold text-[var(--text-primary)] text-sm">تم الانتهاء من الزيارة</h3>
+        <p className="text-xs text-[var(--text-tertiary)] mt-1">يمكنك عرض التاريخ الطبي من تاب "التاريخ الطبي"</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 pb-20">
-      
-      {/* Top Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-        {/* Complaint */}
-        <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <Users className="text-blue-600 w-5 h-5" />
-                <h3 className="font-bold text-gray-900">الشكوى الرئيسية</h3>
-            </div>
-            <div className="p-4 bg-white">
-                <textarea 
-                    name="patientComplaint"
-                    value={draft.patientComplaint}
-                    onChange={handleTextChange}
-                    className="w-full text-sm outline-none resize-none h-24 text-gray-700 bg-transparent placeholder-gray-300"
-                    placeholder="دوّن سبب زيارة المريض أو شكواه الأساسية هنا..."
-                ></textarea>
-            </div>
-        </div>
-
-        {/* Diagnosis */}
-        <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <FileText className="text-blue-600 w-5 h-5" />
-                <h3 className="font-bold text-gray-900">التشخيص</h3>
-            </div>
-            <div className="p-4 bg-white">
-                <textarea 
-                    name="diagnosis"
-                    value={draft.diagnosis}
-                    onChange={handleTextChange}
-                    className="w-full text-sm outline-none resize-none h-24 text-gray-700 bg-transparent placeholder-gray-300"
-                    placeholder="أدخل التشخيص المبدئي أو النهائي..."
-                ></textarea>
-            </div>
-        </div>
-
+    <div className="space-y-4 animate-slideUp">
+      {/* Auto-save indicator */}
+      <div className="flex items-center gap-1.5 text-[var(--text-tertiary)] text-[11px]">
+        <Save size={12} />
+        <span>الحفظ التلقائي مفعل</span>
       </div>
 
-      {/* Notes & Prescriptions Section */}
-      <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-        <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-            <ClipboardList className="text-blue-600 w-5 h-5" />
-            <h3 className="font-bold text-gray-900">الملاحظات والوصفة الطبية</h3>
+      {/* Complaint */}
+      <div className="card p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-[var(--brand-50)] flex items-center justify-center">
+            <MessageSquare className="w-3.5 h-3.5 text-[var(--brand)]" />
+          </div>
+          <h4 className="text-sm font-bold text-[var(--text-primary)]">الشكوى الرئيسية</h4>
         </div>
-        <div className="p-4">
-            <textarea 
-                name="notes"
-                value={draft.notes}
-                onChange={handleTextChange}
-                className="w-full text-sm outline-none resize-vertical min-h-[100px] text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6 placeholder-gray-400"
-                placeholder="دوّن الملاحظات السريرية، خطة العلاج، والأدوية الموصوفة..."
-            ></textarea>
+        <textarea
+          value={currentDraft.patientComplaint}
+          onChange={(e) => handleFieldChange('patientComplaint', e.target.value)}
+          placeholder="اكتب شكوى المريض الرئيسية..."
+          rows="3"
+          className="input-base resize-none"
+        />
+      </div>
 
-            {/* Prescriptions Dynamic List */}
-            <div className="border-t border-gray-100 pt-6">
-                <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                   <PenTool className="text-gray-400 w-4 h-4" />
-                   الأدوية والوصفات (Prescriptions)
-                </h4>
+      {/* Diagnosis */}
+      <div className="card p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-[var(--brand-50)] flex items-center justify-center">
+            <Stethoscope className="w-3.5 h-3.5 text-[var(--brand)]" />
+          </div>
+          <h4 className="text-sm font-bold text-[var(--text-primary)]">التشخيص</h4>
+        </div>
+        <textarea
+          value={currentDraft.diagnosis}
+          onChange={(e) => handleFieldChange('diagnosis', e.target.value)}
+          placeholder="اكتب التشخيص المبدئي أو النهائي..."
+          rows="2"
+          className="input-base resize-none"
+        />
+      </div>
 
-                {/* Added Prescriptions Table */}
-                {draft.prescriptions.length > 0 && (
-                    <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden mb-4">
-                        <table className="w-full text-sm text-right">
-                            <thead className="bg-gray-100 text-gray-600 border-b border-gray-200">
-                                <tr>
-                                    <th className="px-4 py-2 font-medium">اسم الدواء</th>
-                                    <th className="px-4 py-2 font-medium">الجرعة</th>
-                                    <th className="px-4 py-2 font-medium">التكرار</th>
-                                    <th className="px-4 py-2 font-medium">المدة</th>
-                                    <th className="px-4 py-2 font-medium text-center">حذف</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {draft.prescriptions.map((p, idx) => (
-                                    <tr key={idx} className="bg-white">
-                                        <td className="px-4 py-2 font-bold text-blue-700">{p.drugName}</td>
-                                        <td className="px-4 py-2 text-gray-600">{p.dosage}</td>
-                                        <td className="px-4 py-2 text-gray-600">{p.frequency}</td>
-                                        <td className="px-4 py-2 text-gray-600">{p.duration}</td>
-                                        <td className="px-4 py-2 text-center">
-                                            <button 
-                                                onClick={() => removePrescription(appointmentId, idx)}
-                                                className="text-red-400 hover:text-red-600 p-1 rounded transition-colors"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+      {/* Notes */}
+      <div className="card p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-[var(--brand-50)] flex items-center justify-center">
+            <FileText className="w-3.5 h-3.5 text-[var(--brand)]" />
+          </div>
+          <h4 className="text-sm font-bold text-[var(--text-primary)]">ملاحظات سريرية</h4>
+        </div>
+        <textarea
+          value={currentDraft.notes}
+          onChange={(e) => handleFieldChange('notes', e.target.value)}
+          placeholder="ملاحظات إضافية..."
+          rows="2"
+          className="input-base resize-none"
+        />
+      </div>
 
-                {/* Add New Prescription Row */}
-                <div className="flex gap-2 flex-wrap">
-                    <input 
-                        type="text" 
-                        placeholder="اسم الدواء..." 
-                        value={prescriptionForm.drugName}
-                        onChange={e => setPrescriptionForm({...prescriptionForm, drugName: e.target.value})}
-                        className="flex-1 min-w-[200px] border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" 
-                    />
-                    <input 
-                        type="text" 
-                        placeholder="الجرعة (مثال: 500mg)" 
-                        value={prescriptionForm.dosage}
-                        onChange={e => setPrescriptionForm({...prescriptionForm, dosage: e.target.value})}
-                        className="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" 
-                    />
-                    <input 
-                        type="text" 
-                        placeholder="التكرار (مثال: مرتين يومياً)" 
-                        value={prescriptionForm.frequency}
-                        onChange={e => setPrescriptionForm({...prescriptionForm, frequency: e.target.value})}
-                        className="w-40 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" 
-                    />
-                    <input 
-                        type="text" 
-                        placeholder="المدة (مثال: 5 أيام)" 
-                        value={prescriptionForm.duration}
-                        onChange={e => setPrescriptionForm({...prescriptionForm, duration: e.target.value})}
-                        className="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" 
-                    />
-                    <button 
-                        onClick={handleAddPrescription}
-                        disabled={!prescriptionForm.drugName}
-                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 border border-blue-200 rounded-lg px-4 py-2 flex items-center justify-center transition-colors"
-                    >
-                        <Plus className="w-5 h-5" />
-                    </button>
+      {/* Prescriptions */}
+      <div className="card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[var(--brand-50)] flex items-center justify-center">
+              <Pill className="w-3.5 h-3.5 text-[var(--brand)]" />
+            </div>
+            <h4 className="text-sm font-bold text-[var(--text-primary)]">الوصفة الطبية</h4>
+          </div>
+          <button
+            onClick={handleAddDrug}
+            className="flex items-center gap-1 text-[var(--brand)] hover:bg-[var(--brand-50)] px-2 py-1 rounded-md text-xs font-semibold transition-colors"
+          >
+            <Plus size={14} />
+            إضافة دواء
+          </button>
+        </div>
+
+        {currentDraft.prescriptions.length === 0 ? (
+          <div className="border border-dashed border-[var(--border)] rounded-lg p-6 text-center text-[var(--text-tertiary)]">
+            <Pill className="w-6 h-6 mx-auto mb-2 opacity-30" />
+            <p className="text-xs">لا توجد أدوية. اضغط "إضافة دواء" لإضافة وصفة.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {currentDraft.prescriptions.map((pres, index) => (
+              <div key={index} className="bg-[var(--surface)] p-3 rounded-lg border border-[var(--border-light)] animate-slideUp">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">دواء #{index + 1}</span>
+                  <button
+                    onClick={() => removePrescription(activeAppointmentId, index)}
+                    className="text-[var(--text-tertiary)] hover:text-[var(--status-error-text)] transition-colors p-1 rounded"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
-            </div>
-        </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <input
+                    type="text"
+                    placeholder="اسم الدواء"
+                    className="input-base text-xs"
+                    value={pres.drugName}
+                    onChange={(e) => handlePrescriptionChange(index, 'drugName', e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder="الجرعة"
+                    className="input-base text-xs"
+                    value={pres.dosage}
+                    onChange={(e) => handlePrescriptionChange(index, 'dosage', e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder="التكرار"
+                    className="input-base text-xs"
+                    value={pres.frequency}
+                    onChange={(e) => handlePrescriptionChange(index, 'frequency', e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder="المدة"
+                    className="input-base text-xs"
+                    value={pres.duration}
+                    onChange={(e) => handlePrescriptionChange(index, 'duration', e.target.value)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Action Footer */}
-      <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
-         <button 
-            onClick={handleEndVisit}
-            disabled={submitMedicalHistory.isPending || updateStatusMutation.isPending}
-            className="flex-shrink-0 bg-[#0052b4] hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg flex items-center gap-3 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-         >
-             {submitMedicalHistory.isPending ? 'جاري الحفظ...' : 'إنهاء الزيارة واستدعاء التالي'}
-             {!submitMedicalHistory.isPending && <ArrowRight className="w-5 h-5 rtl:-scale-x-100" />}
-         </button>
-         <div className="px-6 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-medium flex items-center gap-2">
-            تم حفظ المسودة تلقائياً
-            <CheckCircle className="w-4 h-4 text-green-500" />
-         </div>
+      {/* Submit */}
+      <div className="flex justify-start pt-2 pb-4">
+        <Button
+          onClick={handleFinishVisit}
+          disabled={isSubmitting || !currentDraft.patientComplaint.trim()}
+          className="gap-2"
+        >
+          <Send size={16} />
+          {isSubmitting ? 'جاري الحفظ...' : 'إنهاء الزيارة واستدعاء التالي'}
+        </Button>
       </div>
-
     </div>
   );
 };

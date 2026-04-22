@@ -1,7 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { LogOut, Settings, Bell } from 'lucide-react';
-import logo from '../assets/al_hayat_hospital_logo1.png';
+import HayatLogo from './HayatLogo';
+
 const DoctorLayout = () => {
   const { user, accessToken, logout } = useAuthStore();
 
@@ -14,29 +15,33 @@ const DoctorLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[var(--surface)] flex flex-col">
       {/* Doctor Topbar */}
-      <header className="bg-white border-b px-6 py-3 flex items-center justify-between">
+      <header className="bg-[var(--brand)] px-6 py-2.5 flex items-center justify-between sticky top-0 z-20 shadow-md">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
-            <img
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || 'D R')}&background=0ea5e9&color=fff&rounded=true`}
-              alt="Doctor Avatar"
-              className="w-10 h-10 rounded-full"
-            />
-            <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors">
-              <LogOut size={20} />
-            </button>
+            <div className="w-9 h-9 rounded-lg bg-white/15 text-white flex items-center justify-center font-bold text-sm">
+              {user?.displayName ? user.displayName.charAt(0) : 'د'}
+            </div>
+            <div className="hidden sm:block">
+              <p className="text-sm font-semibold text-white leading-tight">{user?.displayName || 'طبيب'}</p>
+              <p className="text-[11px] text-blue-200/60">عيادة الطبيب</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3 text-gray-500 border-l pl-4 border-gray-200">
-            <button className="hover:text-blue-600 transition-colors"><Settings size={20} /></button>
-            <button className="hover:text-blue-600 transition-colors"><Bell size={20} /></button>
+          <div className="flex items-center gap-1 text-white/40 border-l border-white/10 pl-3">
+            <button className="p-2 rounded-lg hover:bg-white/10 hover:text-white transition-colors duration-200">
+              <Settings size={18} strokeWidth={1.8} />
+            </button>
+            <button className="p-2 rounded-lg hover:bg-white/10 hover:text-white transition-colors duration-200">
+              <Bell size={18} strokeWidth={1.8} />
+            </button>
+            <button onClick={logout} className="p-2 rounded-lg hover:bg-red-500/20 hover:text-red-300 transition-colors duration-200">
+              <LogOut size={18} strokeWidth={1.8} />
+            </button>
           </div>
         </div>
 
-        <div className="text-xl font-bold text-blue-600 w-20">
-          <img src={logo} alt="logo" />
-        </div>
+        <HayatLogo variant="light" size="xs" showText={false} />
       </header>
 
       {/* Main Content Area */}

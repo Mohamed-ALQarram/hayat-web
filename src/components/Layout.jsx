@@ -16,11 +16,11 @@ const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-[var(--surface)]">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="mr-60 flex flex-col min-h-screen">
         <Topbar />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 mr-64">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6">
           <Outlet />
         </main>
       </div>
