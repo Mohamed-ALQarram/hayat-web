@@ -78,7 +78,7 @@ const AppointmentTicket = ({ ticket, onClose }) => {
             {ticket.appointmentId && (
               <div className="bg-[var(--surface)] border border-[var(--border-light)] rounded-lg p-2 text-center">
                 <p className="text-[10px] text-[var(--text-tertiary)] mb-0.5">رقم الموعد</p>
-                <p className="text-xs font-mono font-bold text-[var(--brand)]">{ticket.appointmentId.split('-')[0]?.toUpperCase()}</p>
+                <p className="text-xs font-mono font-bold text-[var(--brand)]">{String(ticket.appointmentId).split('-')[0]?.toUpperCase()}</p>
               </div>
             )}
           </div>

@@ -131,6 +131,12 @@ const ReceptionDashboard = () => {
 
       {/* Table */}
       <div className="card overflow-hidden">
+        {updateStatusMutation.isError && (
+          <div className="m-4 bg-[var(--status-error-bg)] border border-[var(--status-error-border)] text-[var(--status-error-text)] p-3 rounded-lg text-sm text-center animate-fadeIn">
+            <p className="font-bold mb-1">فشل تحديث الحالة</p>
+            <p>{updateStatusMutation.error?.customMessage || 'حدث خطأ، يرجى المحاولة مرة أخرى.'}</p>
+          </div>
+        )}
         <table className="w-full text-right text-sm">
           <thead>
             <tr className="border-b border-[var(--border)]">

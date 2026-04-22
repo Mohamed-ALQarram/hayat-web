@@ -126,7 +126,7 @@ const AppointmentModal = ({ isOpen, onClose, onTicketReady }) => {
       {
         onSuccess: (data) => {
           if (onTicketReady) onTicketReady(data);
-          onClose();
+          setStep(5);
         },
       }
     );
@@ -167,7 +167,7 @@ const AppointmentModal = ({ isOpen, onClose, onTicketReady }) => {
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className={`p-6 flex-1 ${step === 1 ? 'overflow-visible min-h-[350px]' : 'overflow-y-auto'}`}>
 
           {/* Step 1: Select Patient */}
           {step === 1 && (
@@ -339,19 +339,42 @@ const AppointmentModal = ({ isOpen, onClose, onTicketReady }) => {
                   لا توجد أوقات متاحة لهذا اليوم
                 </div>
               )}
+
+              {bookMutation.isError && (
+                <div className="mt-6 bg-[var(--status-error-bg)] border border-[var(--status-error-border)] text-[var(--status-error-text)] p-3 rounded-lg text-sm text-center animate-fadeIn">
+                  <p className="font-bold mb-1">حدث خطأ أثناء الحجز</p>
+                  <p>{bookMutation.error?.customMessage || 'يرجى المحاولة مرة أخرى.'}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 5: Success */}
+          {step === 5 && (
+            <div className="animate-scaleIn flex flex-col items-center justify-center py-10 text-center">
+              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-5 relative">
+                <div className="absolute inset-0 border-4 border-green-500 rounded-full animate-ping opacity-20" />
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">تم الحجز بنجاح!</h3>
+              <p className="text-sm text-[var(--text-tertiary)] max-w-sm mx-auto">
+                تم تأكيد الموعد بنجاح للمريض <span className="font-bold text-[var(--text-secondary)]">{selectedPatient?.fullName}</span>.
+              </p>
             </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-[var(--border)] flex justify-between items-center shrink-0">
-          {step > 1 ? (
+          {step > 1 && step < 5 ? (
             <Button variant="ghost" size="sm" onClick={() => setStep(step - 1)}>السابق</Button>
           ) : (
             <div />
           )}
 
-          {step < 4 ? (
+          {step === 5 ? (
+            <Button size="sm" onClick={onClose}>إغلاق نافذة الحجز</Button>
+          ) : step < 4 ? (
             <Button
               size="sm"
               disabled={
