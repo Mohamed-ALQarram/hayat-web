@@ -113,15 +113,18 @@ const AppointmentModal = ({ isOpen, onClose, onTicketReady }) => {
   const handleBook = () => {
     if (!selectedPatient || !selectedClinic || !selectedDate || !selectedTime) return;
 
-    const [h, m] = selectedTime.split(':');
-    const appointmentDate = new Date(selectedDate);
-    appointmentDate.setHours(parseInt(h), parseInt(m), 0, 0);
+    // Get date parts directly to construct local datetime string
+    // This prevents toISOString() from shifting the time to UTC
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const localDateTime = `${year}-${month}-${day}T${selectedTime}:00`;
 
     bookMutation.mutate(
       {
         patientId: selectedPatient.patientId,
         clinicId: selectedClinic,
-        appointmentDate: appointmentDate.toISOString(),
+        appointmentDate: localDateTime,
       },
       {
         onSuccess: (data) => {
